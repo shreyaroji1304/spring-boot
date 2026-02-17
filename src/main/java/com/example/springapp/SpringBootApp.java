@@ -1,3 +1,4 @@
+/*main*/
 package com.example.springapp;
 
 import org.springframework.boot.SpringApplication;
