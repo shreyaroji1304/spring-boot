@@ -1,0 +1,82 @@
+trigger:
+- main
+
+variables:
+  imageName: 'springboot-app'
+  acrName: 'shreyaspringacr'
+  resourceGroup: 'springboot-rg'
+  containerAppName: 'springboot-app'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+
+# ========================
+# BUILD STAGE
+# ========================
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        publishJUnitResults: true
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
+
+    - task: Docker@2
+      displayName: Build Docker Image
+      inputs:
+        command: build
+        repository: $(imageName)
+        Dockerfile: Dockerfile
+        tags: |
+          $(Build.BuildId)
+
+# ========================
+# PUSH STAGE
+# ========================
+- stage: Push
+  dependsOn: Build
+  jobs:
+  - job: Push
+    steps:
+
+    - task: Docker@2
+      displayName: Login to ACR
+      inputs:
+        command: login
+        containerRegistry: azure-connection
+
+    - task: Docker@2
+      displayName: Push Docker Image
+      inputs:
+        command: push
+        repository: $(imageName)
+        containerRegistry: azure-connection
+        tags: |
+          $(Build.BuildId)
+
+# ========================
+# DEPLOY STAGE
+# ========================
+- stage: Deploy
+  dependsOn: Push
+  jobs:
+  - job: Deploy
+    steps:
+
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: azure-connection
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az containerapp update \
+            --name $(containerAppName) \
+            --resource-group $(resourceGroup) \
+            --image $(acrName).azurecr.io/$(imageName):$(Build.BuildId)
