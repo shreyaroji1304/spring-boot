@@ -23,7 +23,7 @@ stages:
   - job: BuildPush
     steps:
 
-    - task: Maven@3
+    - task: Maven@4
       displayName: Build Spring Boot App
       inputs:
         mavenPomFile: 'pom.xml'

@@ -20,7 +20,7 @@ import com.example.springapp.model.User;
 import com.example.springapp.service.UserService;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/user")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 public class UserController {
 
