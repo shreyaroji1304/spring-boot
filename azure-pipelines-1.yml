@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/azure-pipelines-vscode/master/service-schema.json
+
 trigger:
 - main
 
@@ -12,65 +14,45 @@ pool:
 
 stages:
 
-# ========================
-# BUILD STAGE
-# ========================
-- stage: Build
+# ================================
+# BUILD + PUSH DOCKER IMAGE
+# ================================
+- stage: BuildAndPush
+  displayName: Build and Push Docker Image
   jobs:
-  - job: Build
+  - job: BuildPush
     steps:
 
     - task: Maven@3
+      displayName: Build Spring Boot App
       inputs:
         mavenPomFile: 'pom.xml'
         goals: 'clean package'
-        publishJUnitResults: true
         javaHomeOption: 'JDKVersion'
         jdkVersionOption: '1.17'
 
     - task: Docker@2
-      displayName: Build Docker Image
+      displayName: Build and Push to ACR
       inputs:
-        command: build
+        command: buildAndPush
         repository: $(imageName)
         Dockerfile: Dockerfile
+        containerRegistry: acr-connection
         tags: |
           $(Build.BuildId)
 
-# ========================
-# PUSH STAGE
-# ========================
-- stage: Push
-  dependsOn: Build
-  jobs:
-  - job: Push
-    steps:
-
-    - task: Docker@2
-      displayName: Login to ACR
-      inputs:
-        command: login
-        containerRegistry: azure-connection
-
-    - task: Docker@2
-      displayName: Push Docker Image
-      inputs:
-        command: push
-        repository: $(imageName)
-        containerRegistry: azure-connection
-        tags: |
-          $(Build.BuildId)
-
-# ========================
-# DEPLOY STAGE
-# ========================
+# ================================
+# DEPLOY TO AZURE CONTAINER APPS
+# ================================
 - stage: Deploy
-  dependsOn: Push
+  displayName: Deploy to Azure Container Apps
+  dependsOn: BuildAndPush
   jobs:
   - job: Deploy
     steps:
 
     - task: AzureCLI@2
+      displayName: Update Container App
       inputs:
         azureSubscription: azure-connection
         scriptType: bash
