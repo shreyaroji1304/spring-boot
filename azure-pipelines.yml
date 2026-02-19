@@ -1,28 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/azure-pipelines-vscode/master/service-schema.json
+
 trigger:
 - main
+
+variables:
+  imageName: 'springboot-app'
+  acrName: 'shreyaspringacr'
+  resourceGroup: 'springboot-rg'
+  containerAppName: 'springboot-app'
 
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
+stages:
 
-- script: |
-    echo "Building Docker image using docker compose..."
-    docker compose build
-  displayName: 'Build Docker Image'
+# ================= BUILD =================
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
 
-- script: |
-    echo "Starting container..."
-    docker compose up -d
-  displayName: 'Start Container'
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        goals: 'clean package'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: '1.17'
 
-- script: |
-    echo "Waiting for container health check..."
-    sleep 40
-    docker ps
-  displayName: 'Verify Container Running'
+    - task: Docker@2
+      displayName: Build Docker Image
+      inputs:
+        command: build
+        repository: $(imageName)
+        Dockerfile: Dockerfile
+        tags: |
+          $(Build.BuildId)
 
-- script: |
-    echo "Stopping container..."
-    docker compose down
-  displayName: 'Stop Container'
+# ================= PUSH =================
+- stage: Push
+  dependsOn: Build
+  jobs:
+  - job: Push
+    steps:
+
+    - task: Docker@2
+      displayName: Login to ACR
+      inputs:
+        command: login
+        containerRegistry: acr-connection
+
+    - task: Docker@2
+      displayName: Push Docker Image
+      inputs:
+        command: push
+        repository: $(imageName)
+        containerRegistry: acr-connection
+        tags: |
+          $(Build.BuildId)
+
+# ================= DEPLOY =================
+- stage: Deploy
+  dependsOn: Push
+  jobs:
+  - job: Deploy
+    steps:
+
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: azure-connection
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az containerapp update \
+            --name $(containerAppName) \
+            --resource-group $(resourceGroup) \
+            --image $(acrName).azurecr.io/$(imageName):$(Build.BuildId)
