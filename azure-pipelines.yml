@@ -31,12 +31,13 @@ stages:
       displayName: Build Docker Image
       inputs:
         command: build
-        repository: $(imageName)
+        repository: shreyaspringacr.azurecr.io/springboot-app
         Dockerfile: Dockerfile
         tags: |
           $(Build.BuildId)
 
-# ================= PUSH =================
+
+# ================= DEPLOY =================
 - stage: Push
   dependsOn: Build
   jobs:
@@ -53,25 +54,7 @@ stages:
       displayName: Push Docker Image
       inputs:
         command: push
-        repository: $(imageName)
+        repository: shreyaspringacr.azurecr.io/springboot-app
         containerRegistry: acr-connection
         tags: |
           $(Build.BuildId)
-
-# ================= DEPLOY =================
-- stage: Deploy
-  dependsOn: Push
-  jobs:
-  - job: Deploy
-    steps:
-
-    - task: AzureCLI@2
-      inputs:
-        azureSubscription: azure-connection
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
-          az containerapp update \
-            --name $(containerAppName) \
-            --resource-group $(resourceGroup) \
-            --image $(acrName).azurecr.io/$(imageName):$(Build.BuildId)
