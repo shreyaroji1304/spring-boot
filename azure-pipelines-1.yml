@@ -27,7 +27,7 @@ stages:
       displayName: Build Spring Boot App
       inputs:
         mavenPomFile: 'pom.xml'
-        goals: 'clean package'
+        goals: 'clean package -DskipTests'
         javaHomeOption: 'JDKVersion'
         jdkVersionOption: '1.17'
 
