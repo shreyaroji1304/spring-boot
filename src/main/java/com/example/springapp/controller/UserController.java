@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.springapp.dto.UserDTO;
 import com.example.springapp.model.User;
 import com.example.springapp.service.UserService;
 
@@ -27,30 +28,34 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
         List<User> users = userService.getAllUsers();
-        return new ResponseEntity<>(users, HttpStatus.OK);
+        List<UserDTO> dtos = users.stream().map(this::toDTO).toList();
+        return new ResponseEntity<>(dtos, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         Optional<User> user = userService.getUserById(id);
-        return user.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
+        return user.map(value -> new ResponseEntity<>(toDTO(value), HttpStatus.OK))
                    .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user) {
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDto) {
+        User user = fromDTO(userDto);
         User createdUser = userService.createUser(user);
-        return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
+        return new ResponseEntity<>(toDTO(createdUser), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User userDetails) {
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO userDto) {
+        User userDetails = fromDTO(userDto);
         User updatedUser = userService.updateUser(id, userDetails);
         if (updatedUser != null) {
-            return new ResponseEntity<>(updatedUser, HttpStatus.OK);
+            return new ResponseEntity<>(toDTO(updatedUser), HttpStatus.OK);
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
@@ -67,5 +72,22 @@ public class UserController {
     @GetMapping("/showhealth")
     public ResponseEntity<String> health() {
         return new ResponseEntity<>("API is running", HttpStatus.OK);
+    }
+
+    // helper converters between entity and DTO
+    private UserDTO toDTO(User user) {
+        if (user == null) return null;
+        return new UserDTO(user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.getAddress());
+    }
+
+    private User fromDTO(UserDTO dto) {
+        if (dto == null) return null;
+        User user = new User();
+        user.setId(dto.getId());
+        user.setName(dto.getName());
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
+        user.setAddress(dto.getAddress());
+        return user;
     }
 }
