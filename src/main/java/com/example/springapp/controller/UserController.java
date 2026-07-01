@@ -69,7 +69,7 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    @GetMapping("/showhealth")
+    @GetMapping("/showAPIhealth")
     public ResponseEntity<String> health() {
         return new ResponseEntity<>("API is running", HttpStatus.OK);
     }
